@@ -8,6 +8,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import hashlib
 import requests
+import threading
 
 from key_manager import KeyManager
 from key_manager.hashicorp import HashiCorpVaultKeyManager
@@ -26,6 +27,13 @@ key_manager: KeyManager = HashiCorpVaultKeyManager()
 setup_authority_model = api.model('SetupAuthority', {
     'authority_name': fields.String(required=True, description='Name of the authority')
 })
+
+user_locks = {}
+
+def get_user_lock(user_id: str):
+    if user_id not in user_locks:
+        user_locks[user_id] = threading.Lock()
+    return user_locks[user_id]
 
 @api.route('/setup_authority')
 class SetupAuthority(Resource):
@@ -73,31 +81,32 @@ class Keygen(Resource):
         
         secret_keys = bytesToObject(bytes.fromhex(secret_key), group)
 
-        existing_key = {}
-        try:
-            existing_key_hex = key_manager.retrieve_key(f'{user_id}_key')
-            existing_key = bytesToObject(bytes.fromhex(existing_key_hex), group)
-        except Exception as e:
-            print("No existing key found in Vault for user:", user_id)
-            print("Creating a new key")
-        
-        try:
-            for attribute in attributes:
-                user_key = maabe.keygen(global_params, secret_keys, user_id, attribute.upper())
+        user_lock = get_user_lock(user_id)
+        with user_lock:
+            existing_key = {}
+            try:
+                existing_key_hex = key_manager.retrieve_key(f'{user_id}_key')
+                existing_key = bytesToObject(bytes.fromhex(existing_key_hex), group)
+            except Exception as e:
+                print(f"Creating a new key for user: {user_id}")
+            
+            try:
+                for attribute in attributes:
+                    user_key = maabe.keygen(global_params, secret_keys, user_id, attribute.upper())
 
-                if 'keys' not in existing_key:
-                    existing_key['keys'] = {}
-                existing_key['keys'][attribute.upper()] = user_key
+                    if 'keys' not in existing_key:
+                        existing_key['keys'] = {}
+                    existing_key['keys'][attribute.upper()] = user_key
 
-            if 'GID' not in existing_key:
-                existing_key['GID'] = user_id
+                if 'GID' not in existing_key:
+                    existing_key['GID'] = user_id
 
-            serialized_key = objectToBytes(existing_key, group).hex()
-            key_manager.store_key(f'{user_id}_key', serialized_key)
-            return jsonify({'status': 'success', 'user_key': serialized_key})
-        except Exception as e:
-            print("Keygen Error:", str(e))
-            return jsonify({'error': f"Key generation failed: {str(e)}"}), 500
+                serialized_key = objectToBytes(existing_key, group).hex()
+                key_manager.store_key(f'{user_id}_key', serialized_key)
+                return jsonify({'status': 'success', 'user_key': serialized_key})
+            except Exception as e:
+                print("Keygen Error:", str(e))
+                return jsonify({'error': f"Key generation failed: {str(e)}"}), 500
 
 
 encrypt_model = api.model('Encrypt', {
@@ -113,8 +122,8 @@ class Encrypt(Resource):
             return jsonify({'error': 'Missing required parameters: policy and payload'}), 400
 
         try:
-            policy = data['policy']
-            payload = data['payload']
+            policy: str = data['policy']
+            payload: str = data['payload']
 
             gt = group.random(GT)
 
@@ -149,7 +158,7 @@ class Encrypt(Resource):
             return jsonify({'result': result})
         except Exception as e:
             print("Encryption Error:", str(e))
-            return jsonify({'error': f"Encryption failed: {str(e)}"}), 500
+            return jsonify({'error': "Encryption failed"}), 500
 
 
 decrypt_model = api.model('Decrypt', {
@@ -195,7 +204,7 @@ class Decrypt(Resource):
             
             aes_cipher = AES.new(hashed_key, AES.MODE_CBC, iv=iv)
             unencrypted_payload = unpad(aes_cipher.decrypt(ciphertext), AES.block_size).decode('utf-8')
-            print(unencrypted_payload)
+            # print(unencrypted_payload)
 
             # decoded_message_bytes = objectToBytes(message, group)
 
@@ -203,6 +212,7 @@ class Decrypt(Resource):
 
             return jsonify({'decrypted_message': unencrypted_payload})
         except Exception as e:
-            print("Decryption Error:", str(e))
-            return jsonify({'error': f"Decryption failed: {str(e)}"}), 500
+            print("Decryption Error:", repr(e))
+            print(f"CIPHERTEXT: {ciphertext_hex}\nUSER_ID: {user_id}")
+            return {'error': f"Decryption failed: {str(e)}"}, 500
 

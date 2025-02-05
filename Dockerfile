@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
 # Install PBC from source
 RUN git clone https://github.com/blynn/pbc.git /pbc && \
     cd /pbc && \
+    git checkout 1b5d226de4788bdcd1d47781c746c4192de5b69c && \
     mkdir m4 && \
     wget "http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_compile_stdcxx.m4" -O m4/ax_cxx_compile_stdcxx.m4 && \
     wget "https://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_compile_stdcxx_14.m4" -O m4/ax_cxx_compile_stdcxx_14.m4 && \
@@ -41,6 +42,7 @@ RUN git clone https://github.com/blynn/pbc.git /pbc && \
 # Clone and install Charm-Crypto from source
 RUN git clone https://github.com/JHUISI/charm.git /charm && \
     cd /charm && \
+    git checkout bf9933fe843a0b78c07991452114fc4e4be2e71a && \
     ./configure.sh && \
     make && \
     make install && \
