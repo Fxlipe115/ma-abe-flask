@@ -15,7 +15,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 1.  Clone the repo
     ```sh
-    git clone [https://github.com/ma-abe-flask/ma-abe-flask.git](https://github.com/ma-abe-flask/ma-abe-flask.git)
+    git clone https://github.com/ma-abe-flask/ma-abe-flask.git
     ```
 2.  Navigate to the project directory
     ```sh
