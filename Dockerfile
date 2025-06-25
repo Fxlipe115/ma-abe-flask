@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     flex \
     bison \
     libtool \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PBC from source
@@ -54,6 +55,7 @@ COPY requirements.txt /app/
 
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install gunicorn
 
 # Copy the rest of the application code
 COPY . /app/
@@ -63,9 +65,9 @@ EXPOSE 8080
 # debug port
 EXPOSE 5678
 
-# Run the Flask app
-# Production
-ENTRYPOINT ["python", "-m", "watchmedo", "auto-restart", "--directory=.", "--pattern=*", "--recursive", "--", "python", "-m", "debugpy", "--listen", "0.0.0.0:5679", "run.py"]
+ENTRYPOINT ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--threads", "10", "--preload" "run:app"]
+
+# ENTRYPOINT ["python", "-m", "watchmedo", "auto-restart", "--directory=.", "--pattern=*", "--recursive", "--", "python", "-m", "debugpy", "--listen", "0.0.0.0:5679", "run.py"]
 
 # Debugging
 # CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5679", "run.py"]
