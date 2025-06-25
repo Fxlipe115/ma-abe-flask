@@ -97,7 +97,7 @@ The API provides endpoints for setting up authorities, generating user keys, and
 
     * Example using cURL:
       ```sh
-      curl -X POST "http://localhost:8080/api/encrypt" -H "Content-Type: application/json" -d '{"policy": "(doctor@authority1 AND researcher@authority1)", "payload": "This is a secret message"}'
+      curl -X POST "http://localhost:8080/api/encrypt" -H "Content-Type: application/json" -d '{"policy": "(DOCTOR@AUTHORITY1 AND RESEARCHER@AUTHORITY1)", "payload": "This is a secret message"}'
       ```
 
 4. Decrypt a Message
@@ -118,6 +118,42 @@ The API provides endpoints for setting up authorities, generating user keys, and
       ```sh
       curl -X POST "http://localhost:8080/api/decrypt" -H "Content-Type: application/json" -d '{"user_id": "user1", "payload": "the_long_encrypted_string_from_the_encrypt_endpoint"}'
       ```
+
+5. Encrypt a File
+
+    Encrypt a file with a policy that defines which attributes are required for decryption.
+
+    * Endpoint: POST /api/encrypt_file
+
+    * Request: This endpoint accepts multipart/form-data.
+      * policy: The encryption policy (form field).
+      * payload: The file to encrypt (file upload).
+    * Response: The encrypted file will be returned as a download. The encryption key is returned in the X-Encryption-Key header.
+    
+    * Example using cURL:
+      ```sh
+      curl -X POST "http://localhost:8080/api/encrypt_file" -H "Content-Type: multipart/form-data" -F "policy=(DOCTOR@AUTHORITY1 AND RESEARCHER@AUTHORITY1)" -F "payload=@/path/to/your/file.txt" -o encrypted_file -D headers.txt
+      ```
+
+6. Decrypt a File
+
+    Decrypt a previously encrypted file using a user's key.
+
+    * Endpoint: POST /api/decrypt_file
+    
+    * Request: This endpoint accepts multipart/form-data.
+      * user_id: The user ID (form field).
+      * encrypted_key_hex: The ABE encrypted key in hex format from the X-Encryption-Key header of the encrypt_file response (form field).
+      * ciphertext_file: The encrypted file (file upload).
+    
+    * Response: The decrypted file will be returned as a download.
+    
+    * Example using cURL:
+      ```sh
+      curl -X POST "http://localhost:8080/api/decrypt_file" -H "Content-Type: multipart/form-data" -F "user_id=user1" -F "encrypted_key_hex=<your_encrypted_key>" -F "ciphertext_file=@/path/to/your/encrypted_file" -o decrypted_file.txt
+      ```
+
+
 
 
 
