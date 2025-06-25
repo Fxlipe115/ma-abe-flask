@@ -30,7 +30,7 @@ To deploy the application, run the following command in the root of the project 
 docker-compose -f docker-compose.yml up --build
 ```
 
-The API will be available at http://localhost:8080.
+The API will be available at http://localhost:8080/api.
 
 ### API Documentation (Swagger)
 
